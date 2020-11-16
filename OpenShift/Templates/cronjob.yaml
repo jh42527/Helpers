@@ -1,0 +1,80 @@
+kind: Template
+apiVersion: v1
+metadata:
+  name: Cron Job Template
+objects:
+- apiVersion: batch/v1beta1
+  kind: CronJob
+  metadata:
+    name: ${APPLICATION_NAME}
+  spec:
+    schedule: "${CRON}"
+    jobTemplate:
+      metadata:
+        creationTimestamp: null
+      spec:
+        template:
+          metadata:
+            creationTimestamp: null
+          spec:
+            containers:
+            - args:
+              image: docker-registry.default.svc:5000/${PROJECT_NAME}/${APPLICATION_NAME}:${TAG}
+              imagePullPolicy: Always
+              name: ${APPLICATION_NAME}
+              resources:
+                requests:
+                  cpu: ${CPU_REQUEST}
+                  memory: ${MEMORY_REQUEST}  
+                limits:
+                  memory: ${MEMORY_LIMIT}
+              volumeMounts:
+              - name: ${APPLICATION_NAME}-config
+                mountPath: /opt/config
+              terminationMessagePath: /dev/termination-log
+              terminationMessagePolicy: File
+            dnsPolicy: ClusterFirst
+            restartPolicy: Never
+            schedulerName: default-scheduler
+            securityContext: {}
+            terminationGracePeriodSeconds: 30
+            volumes:
+            - name: ${APPLICATION_NAME}-config
+              configMap:
+                name: ${APPLICATION_NAME}-config
+    concurrencyPolicy: Forbid
+    successfulJobsHistoryLimit: 3
+    failedJobsHistoryLimit: 1
+parameters:
+- description: The name for the application.
+  displayName: Application Name
+  name: APPLICATION_NAME
+  required: true
+- description: The application project.
+  displayName: Project Name
+  name: PROJECT_NAME
+  required: true
+- description: The container tag to deploy
+  displayName: Tag
+  name: TAG
+  required: true
+  value: latest
+- description: The Cron schedule for job execution
+  displayName: Cron Schedule
+  name: CRON
+  required: true
+- description: Requested amount of memory needed to run the container under normal conditions.
+  displayName: Memory Request
+  name: MEMORY_REQUEST
+  required: true
+  value: 64Mi
+- description: Limit amount of memory that can be requested by the container.
+  displayName: Memory Request
+  name: MEMORY_LIMIT
+  required: true
+  value: 128Mi
+- description: Requested amount of CPU needed to run the container under normal conditions. (in millicores, 100 millicores = .1 core)
+  displayName: CPU Request
+  name: CPU_REQUEST
+  required: true
+  value: 50m

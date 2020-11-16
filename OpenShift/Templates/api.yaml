@@ -1,0 +1,118 @@
+kind: Template
+apiVersion: v1
+metadata:
+  name: API Template
+objects:
+- apiVersion: v1
+  kind: DeploymentConfig
+  metadata:
+    labels:
+      app: ${APPLICATION_NAME}
+    name: ${APPLICATION_NAME}
+  spec:
+    replicas: 1
+    revisionHistoryLimit: 10
+    selector:
+      app: ${APPLICATION_NAME}
+      deploymentconfig: ${APPLICATION_NAME}
+    strategy:
+      activeDeadlineSeconds: 21600
+      resources: {}
+      rollingParams:
+        intervalSeconds: 1
+        maxSurge: 0%
+        maxUnavailable: 100%
+        timeoutSeconds: 600
+        updatePeriodSeconds: 1
+      type: Rolling
+    template:
+      metadata:
+        labels:
+          app: ${APPLICATION_NAME}
+          deploymentconfig: ${APPLICATION_NAME}
+      spec:
+        containers:
+        - env:
+          image: docker-registry.default.svc:5000/${PROJECT_NAME}/${APPLICATION_NAME}:${TAG}
+          imagePullPolicy: Always
+          name: ${APPLICATION_NAME}
+          resources:
+            requests:
+              cpu: ${CPU_REQUEST}
+              memory: ${MEMORY_REQUEST}  
+            limits:
+              memory: ${MEMORY_LIMIT}
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+    test: false
+    triggers:
+    - type: ConfigChange
+    - imageChangeParams:
+        automatic: true
+        containerNames:
+        - ${APPLICATION_NAME}
+        from:
+          kind: ImageStreamTag
+          name: ${APPLICATION_NAME}:${TAG}
+          namespace: ${PROJECT_NAME}
+      type: ImageChange
+- apiVersion: v1
+  kind: Service
+  metadata: 
+    name: ${APPLICATION_NAME}
+    annotations:
+      description: Exposes and load balances the application pods
+  spec:
+    ports:
+    - name: ${APPLICATION_NAME}-https
+      port: 443
+      targetPort: 8080
+    selector:
+      app: ${APPLICATION_NAME}
+      deploymentconfig: ${APPLICATION_NAME}
+- apiVersion: v1
+  kind: Route
+  metadata:
+    name: ${APPLICATION_NAME}
+  spec:
+    host: ${APPLICATION_HOSTNAME}
+    to:
+      kind: "Service"
+      name: ${APPLICATION_NAME}
+    tls:
+      termination: edge
+parameters:
+- description: The name for the application.
+  displayName: Application Name
+  name: APPLICATION_NAME
+  required: true
+- description: The application project.
+  displayName: Project Name
+  name: PROJECT_NAME
+  required: true
+- description: 'Custom hostname for service routes.  Leave blank for default hostname. e.g. <application-name>.<project>.<default-domain-suffix>'
+  displayName: Application Hostname
+  name: APPLICATION_HOSTNAME
+- description: The container tag to deploy
+  displayName: Tag
+  name: TAG
+  required: true
+  value: latest
+- description: Requested amount of memory needed to run the container under normal conditions.
+  displayName: Memory Request
+  name: MEMORY_REQUEST
+  required: true
+  value: 64Mi
+- description: Limit amount of memory that can be requested by the container.
+  displayName: Memory Request
+  name: MEMORY_LIMIT
+  required: true
+  value: 128Mi
+- description: Requested amount of CPU needed to run the container under normal conditions. (in millicores, 100 millicores = .1 core)
+  displayName: CPU Request
+  name: CPU_REQUEST
+  required: true
+  value: 50m

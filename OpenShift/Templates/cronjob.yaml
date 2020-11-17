@@ -19,7 +19,7 @@ objects:
           spec:
             containers:
             - args:
-              image: docker-registry.default.svc:5000/${PROJECT_NAME}/${APPLICATION_NAME}:${TAG}
+              image: image-registry.openshift-image-registry.svc:5000/${PROJECT_NAME}/${APPLICATION_NAME}:${TAG}
               imagePullPolicy: Always
               name: ${APPLICATION_NAME}
               resources:
